@@ -7,5 +7,6 @@ var express_1 = __importDefault(require("express"));
 var actions_1 = require("../actions");
 var userRouter = express_1.default.Router();
 userRouter.get("/", actions_1.authUser, actions_1.getUsers);
+userRouter.post("/retoken", actions_1.reToken);
 userRouter.post("/", actions_1.setUser);
 exports.default = userRouter;

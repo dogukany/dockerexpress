@@ -7,11 +7,15 @@ var mongoose_1 = __importDefault(require("mongoose"));
 var userSchema = new mongoose_1.default.Schema({
     email: {
         type: String,
+        unique: true,
         required: true
     },
     password: {
         type: String,
         required: true
+    },
+    refreshToken: {
+        type: String,
     }
 });
 exports.default = mongoose_1.default.model("userSchema", userSchema);

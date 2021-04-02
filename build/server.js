@@ -12,6 +12,12 @@ var app = express_1.default();
 mongoose_1.default.connect("" + process.env.URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    useCreateIndex: true
+});
+var db = mongoose_1.default.connection;
+db.on("error", console.error.bind(console, "connection error:"));
+db.once("open", function () {
+    console.log("db connected!");
 });
 app.use(express_1.default.json());
 app.use("/", mainRouter_1.default);

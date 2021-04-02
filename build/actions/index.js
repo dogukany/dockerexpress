@@ -39,54 +39,120 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authUser = exports.setUser = exports.getUsers = exports.getMainRouter = void 0;
+exports.reToken = exports.authUser = exports.setUser = exports.getUsers = exports.getMainRouter = void 0;
 var userSchema_1 = __importDefault(require("../models/userSchema"));
-var mongoose_1 = __importDefault(require("mongoose"));
+var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 var getMainRouter = function (req, res, next) {
-    var db = mongoose_1.default.connection;
-    db.on("error", console.error.bind(console, "connection error:"));
-    db.once("open", function () {
-        console.log("db connected!");
-    });
     res.send("check /users router for post and get method");
 };
 exports.getMainRouter = getMainRouter;
 var getUsers = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var data;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, userSchema_1.default.find()];
+            case 0: return [4 /*yield*/, userSchema_1.default.findOne({ email: req.user.email }, function (err, myUser) {
+                    if (err) {
+                        console.log(err.message);
+                    }
+                    else {
+                        res.json(myUser);
+                    }
+                })];
             case 1:
-                data = _a.sent();
-                res.json(data);
+                _a.sent();
                 return [2 /*return*/];
         }
     });
 }); };
 exports.getUsers = getUsers;
 var setUser = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var user, newUser;
+    var userheader, accessToken, refreshToken, user, err_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
+                userheader = { email: req.body.email };
+                accessToken = jsonwebtoken_1.default.sign(userheader, "" + process.env.ACCESS_TOKEN, {
+                    expiresIn: "15s",
+                });
+                refreshToken = jsonwebtoken_1.default.sign(userheader, "" + process.env.REFRESH_TOKEN);
                 user = new userSchema_1.default({
                     email: req.body.email,
                     password: req.body.password,
+                    refreshToken: refreshToken,
                 });
-                return [4 /*yield*/, user.save()];
+                _a.label = 1;
             case 1:
-                newUser = _a.sent();
-                res.json(newUser);
-                return [2 /*return*/];
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, user.save()];
+            case 2:
+                _a.sent();
+                res.json({
+                    accesstoken: accessToken,
+                    refreshtoken: refreshToken,
+                    message: "user created",
+                });
+                return [3 /*break*/, 4];
+            case 3:
+                err_1 = _a.sent();
+                return [2 /*return*/, res.sendStatus(401)];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
 exports.setUser = setUser;
 var authUser = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var header, token;
     return __generator(this, function (_a) {
-        console.log("auth middleware works");
-        next();
+        header = req.headers["authorization"];
+        token = header && header.split(" ")[1];
+        if (token == null && header == null) {
+            res.sendStatus(401);
+        }
+        else {
+            jsonwebtoken_1.default.verify(token, "" + process.env.ACCESS_TOKEN, function (err, user) {
+                if (err) {
+                    res.sendStatus(401);
+                }
+                else {
+                    req.user = user;
+                    next();
+                }
+            });
+        }
         return [2 /*return*/];
     });
 }); };
 exports.authUser = authUser;
+var reToken = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var refreshToken, userToken;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                refreshToken = req.body.token;
+                userToken = "";
+                if (refreshToken === null)
+                    return [2 /*return*/, res.sendStatus(401)];
+                return [4 /*yield*/, userSchema_1.default.findOne({ email: req.body.email }, function (err, myUser) {
+                        if (err || myUser === null) {
+                            res.sendStatus(401);
+                        }
+                        else {
+                            userToken = myUser.refreshToken;
+                            if (!userToken.includes(refreshToken))
+                                return res.sendStatus(401);
+                            jsonwebtoken_1.default.verify(refreshToken, "" + process.env.REFRESH_TOKEN, function (err, user) {
+                                if (err)
+                                    return res.sendStatus(403);
+                                var accessToken = jsonwebtoken_1.default.sign({ email: req.body.email }, "" + process.env.ACCESS_TOKEN, {
+                                    expiresIn: "15s",
+                                });
+                                res.json({ accessToken: accessToken });
+                            });
+                        }
+                    })];
+            case 1:
+                _a.sent();
+                return [2 /*return*/];
+        }
+    });
+}); };
+exports.reToken = reToken;
